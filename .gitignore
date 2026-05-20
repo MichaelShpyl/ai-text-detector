@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+
+# Training artefacts
+data/processed/
+checkpoints/
+mlruns/
+mlflow.db
+
+# Model artefacts (model is in MLflow registry, not in git)
+*.pkl
+*.bin
+*.safetensors
+
+# Editor
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test cache
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets (just in case)
+*.env
+*.pem
+secrets/
