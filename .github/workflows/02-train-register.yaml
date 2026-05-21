@@ -15,11 +15,14 @@ on:
       batch_size:
         description: "Batch size"
         default: "16"
+      max_train:
+        description: "Max training examples (0 = all; keep small on a CPU runner)"
+        default: "4000"
 
 jobs:
   train:
     runs-on: self-hosted
-    timeout-minutes: 120
+    timeout-minutes: 240
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,4 +50,6 @@ jobs:
           . .venv/bin/activate
           python training/train.py \
             --epochs ${{ github.event.inputs.epochs || 2 }} \
-            --batch-size ${{ github.event.inputs.batch_size || 16 }}
+            --batch-size ${{ github.event.inputs.batch_size || 16 }} \
+            --max-train ${{ github.event.inputs.max_train || 4000 }} \
+            --max-eval 1000

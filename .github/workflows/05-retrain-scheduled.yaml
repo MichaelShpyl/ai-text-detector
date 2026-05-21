@@ -53,7 +53,7 @@ jobs:
         run: |
           . .venv/bin/activate
           python -m pip install -r training/requirements.txt
-          python training/train.py --epochs 2
+          python training/train.py --epochs 2 --max-train 4000 --max-eval 1000
 
       - name: Run regression test against the new model
         env:

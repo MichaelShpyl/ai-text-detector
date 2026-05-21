@@ -50,7 +50,7 @@ def compute_metrics(eval_pred):
     }
 
 
-def main(epochs: int, batch_size: int, lr: float, mlflow_uri: str):
+def main(epochs: int, batch_size: int, lr: float, mlflow_uri: str, max_train: int = 0, max_eval: int = 0):
     mlflow.set_tracking_uri(mlflow_uri)
     mlflow.set_experiment("ai-text-detector")
 
@@ -58,6 +58,13 @@ def main(epochs: int, batch_size: int, lr: float, mlflow_uri: str):
     train_ds = load_split("train")
     val_ds = load_split("val")
     test_ds = load_split("test")
+    # On a CPU-only runner the full HC3 takes hours, so allow capping the split
+    # sizes. 0 means use everything (for example if a GPU is available).
+    if max_train:
+        train_ds = train_ds.select(range(min(max_train, len(train_ds))))
+    if max_eval:
+        val_ds = val_ds.select(range(min(max_eval, len(val_ds))))
+        test_ds = test_ds.select(range(min(max_eval, len(test_ds))))
     print(f"  train={len(train_ds)} val={len(val_ds)} test={len(test_ds)}")
 
     print(f"Loading base model: {MODEL_NAME}")
@@ -145,5 +152,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--lr", type=float, default=5e-5)
     parser.add_argument("--mlflow-uri", default=os.environ.get("MLFLOW_TRACKING_URI", "http://127.0.0.1:5555"))
+    parser.add_argument("--max-train", type=int, default=0, help="cap train examples (0 = all); keep small on a CPU runner")
+    parser.add_argument("--max-eval", type=int, default=0, help="cap val/test examples (0 = all)")
     args = parser.parse_args()
-    main(args.epochs, args.batch_size, args.lr, args.mlflow_uri)
+    main(args.epochs, args.batch_size, args.lr, args.mlflow_uri, args.max_train, args.max_eval)

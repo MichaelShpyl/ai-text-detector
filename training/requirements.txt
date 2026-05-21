@@ -4,3 +4,4 @@ torch==2.4.1
 scikit-learn==1.5.2
 mlflow==2.16.2
 numpy==1.26.4
+accelerate==0.34.2
