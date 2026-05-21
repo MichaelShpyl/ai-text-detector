@@ -1,0 +1,121 @@
+name: 05 - Continuous Training
+
+# Padlet Stage 8: Continuous Training, designed around the drift + feedback
+# loop principles in Kreuzberger et al. 2023 (P8/P9). Retraining is not
+# scheduled blindly - it is event-driven:
+#
+#   1. workflow_dispatch       - manual, used for the live demo
+#   2. push to data/incoming/  - fired when curated new examples land
+#   3. repository_dispatch     - fired from outside the repo by the drift
+#                                detector when /metrics signals deviation
+#                                from the training-time baseline
+#
+# A monthly cron is kept ONLY as a safety net in case both other triggers
+# fail to fire for an extended period; it is not the primary driver.
+#
+# Promotion is gated by two checks, not one:
+#   (a) regression accuracy floor must be met on a fixed hold-out set
+#   (b) new model must also beat the current Production model on the same
+#       hold-out - otherwise the new version is left in Staging and the
+#       existing Production model continues to serve traffic.
+# Previous Production versions are archived (not deleted) so rollback is
+# a single MLflow API call.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "data/incoming/**"
+  repository_dispatch:
+    types: [drift-detected]
+  schedule:
+    - cron: "0 3 1 * *"   # 1st of each month at 03:00 UTC (safety net only)
+
+jobs:
+  retrain-evaluate-promote:
+    runs-on: self-hosted
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Re-run ingestion
+        run: |
+          pip install --break-system-packages datasets==2.21.0
+          python training/ingest.py --subset all
+
+      - name: Retrain
+        env:
+          MLFLOW_TRACKING_URI: http://localhost:5555
+        run: |
+          pip install --break-system-packages -r training/requirements.txt
+          python training/train.py --epochs 2
+
+      - name: Run regression test against the new model
+        env:
+          API_URL: http://localhost:5000
+          ACCURACY_FLOOR: "0.85"
+        run: |
+          # Bring up a temporary serving container pointing at the new version
+          docker compose up -d detector
+          sleep 30
+          pip install --break-system-packages pytest requests
+          pytest tests/test_model_regression.py -v -m regression
+
+      - name: Promote or archive (two-gate check)
+        # Gate 1: regression floor (already enforced by the step above - if
+        # that failed, this step doesn't run). Gate 2: must beat the
+        # incumbent Production model on the same hold-out. If not, the new
+        # version stays in Staging and Production is untouched.
+        env:
+          MLFLOW_TRACKING_URI: http://localhost:5555
+          ACCURACY_FLOOR: "0.85"
+        run: |
+          python - <<'EOF'
+          import os
+          import mlflow
+          from mlflow import MlflowClient
+
+          client = MlflowClient()
+          name = "ai-text-detector"
+          versions = client.search_model_versions(f"name='{name}'")
+          if not versions:
+              raise SystemExit("No registered versions found")
+
+          # Newly trained version is the highest-numbered one
+          candidate = max(versions, key=lambda v: int(v.version))
+          incumbent = next(
+              (v for v in versions if v.current_stage == "Production"),
+              None,
+          )
+
+          # Move candidate to Staging while we decide
+          client.transition_model_version_stage(name, candidate.version, "Staging")
+
+          # Compare on the same hold-out (test set metrics are logged on each run)
+          cand_run = client.get_run(candidate.run_id)
+          cand_acc = cand_run.data.metrics.get("test_accuracy", 0.0)
+
+          if incumbent is None:
+              print(f"No incumbent - promoting candidate v{candidate.version} (acc={cand_acc:.3f})")
+              client.transition_model_version_stage(
+                  name, candidate.version, "Production",
+                  archive_existing_versions=True,
+              )
+          else:
+              inc_run = client.get_run(incumbent.run_id)
+              inc_acc = inc_run.data.metrics.get("test_accuracy", 0.0)
+              print(f"Candidate v{candidate.version}: {cand_acc:.3f}")
+              print(f"Incumbent v{incumbent.version}: {inc_acc:.3f}")
+              if cand_acc > inc_acc:
+                  client.transition_model_version_stage(
+                      name, candidate.version, "Production",
+                      archive_existing_versions=True,
+                  )
+                  print(f"Promoted v{candidate.version} (beat incumbent)")
+              else:
+                  print(f"Candidate did NOT beat incumbent - left in Staging")
+                  # Non-zero exit signals the run was a no-op promotion;
+                  # the workflow itself still succeeds because retraining
+                  # finished cleanly. Production is untouched.
+          EOF

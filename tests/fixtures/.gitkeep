@@ -1,0 +1,2 @@
+# Place curated regression_set.jsonl here.
+# Format: one JSON object per line with keys "text" and "label" (0=human, 1=AI).
