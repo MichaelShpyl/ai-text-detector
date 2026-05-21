@@ -123,6 +123,21 @@ def main(epochs: int, batch_size: int, lr: float, mlflow_uri: str):
         )
         print(f"Run ID: {run.info.run_id}")
 
+        # Capture a drift baseline from the validation set. monitoring/
+        # drift_detector.py compares the live /metrics gauges against this
+        # later to decide whether to trigger a retrain.
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from monitoring.drift_detector import save_baseline
+        from training.preprocess import clean_text
+
+        val_logits = trainer.predict(val_tok).predictions
+        val_probs = np.exp(val_logits - val_logits.max(axis=1, keepdims=True))
+        val_probs = val_probs / val_probs.sum(axis=1, keepdims=True)
+        confidences = val_probs.max(axis=1).tolist()
+        input_lengths = [len(clean_text(t)) for t in val_ds["text"]]
+        save_baseline(confidences, input_lengths, "data/baseline_stats.json")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

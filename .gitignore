@@ -10,6 +10,7 @@ env/
 
 # Training artefacts
 data/processed/
+data/baseline_stats.json
 checkpoints/
 mlruns/
 mlflow.db
