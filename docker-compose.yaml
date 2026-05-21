@@ -1,0 +1,41 @@
+# Local development stack.
+#
+#   docker compose up -d mlflow   # MLflow only, then run train.py from the host
+#   docker compose up             # everything (MLflow + detector)
+#
+# The detector reads the trained model from MLflow at startup, so MLflow
+# must be running and have at least one registered model before the
+# detector container will boot successfully.
+
+version: "3.8"
+
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.16.2
+    ports:
+      - "5555:5000"
+    command: >
+      mlflow server
+        --host 0.0.0.0
+        --backend-store-uri sqlite:///mlflow/mlflow.db
+        --default-artifact-root /mlflow/artifacts
+    volumes:
+      - mlflow-data:/mlflow
+    container_name: mlflow-tracking-server
+
+  detector:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MODEL_NAME: ai-text-detector
+      MODEL_STAGE: None
+    depends_on:
+      - mlflow
+    container_name: ai-text-detector
+
+volumes:
+  mlflow-data:
