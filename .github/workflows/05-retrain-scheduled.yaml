@@ -50,10 +50,14 @@ jobs:
       - name: Retrain
         env:
           MLFLOW_TRACKING_URI: http://localhost:5555
+          OMP_NUM_THREADS: "2"
+          MKL_NUM_THREADS: "2"
+          TORCH_NUM_THREADS: "2"
+          TOKENIZERS_PARALLELISM: "false"
         run: |
           . .venv/bin/activate
           python -m pip install -r training/requirements.txt
-          python training/train.py --epochs 2 --max-train 4000 --max-eval 1000
+          python training/train.py --epochs 1 --max-train 2000 --max-eval 1000
 
       - name: Run regression test against the new model
         env:

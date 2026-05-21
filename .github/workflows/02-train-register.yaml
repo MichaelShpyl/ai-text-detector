@@ -11,13 +11,13 @@ on:
     inputs:
       epochs:
         description: "Training epochs"
-        default: "2"
+        default: "1"
       batch_size:
         description: "Batch size"
-        default: "16"
+        default: "8"
       max_train:
         description: "Max training examples (0 = all; keep small on a CPU runner)"
-        default: "4000"
+        default: "2000"
 
 jobs:
   train:
@@ -46,6 +46,10 @@ jobs:
       - name: Train and register
         env:
           MLFLOW_TRACKING_URI: http://localhost:5555
+          OMP_NUM_THREADS: "2"
+          MKL_NUM_THREADS: "2"
+          TORCH_NUM_THREADS: "2"
+          TOKENIZERS_PARALLELISM: "false"
         run: |
           . .venv/bin/activate
           python training/train.py \

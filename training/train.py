@@ -17,6 +17,7 @@ from pathlib import Path
 import mlflow
 import mlflow.transformers
 import numpy as np
+import torch
 from datasets import Dataset
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from transformers import (
@@ -54,6 +55,10 @@ def main(epochs: int, batch_size: int, lr: float, mlflow_uri: str, max_train: in
     mlflow.set_tracking_uri(mlflow_uri)
     mlflow.set_experiment("ai-text-detector")
 
+    # Cap CPU threads so training doesn't starve the self-hosted runner's
+    # heartbeat (that shows up as "runner lost communication" in Actions).
+    torch.set_num_threads(int(os.environ.get("TORCH_NUM_THREADS", "2")))
+
     print("Loading data splits...")
     train_ds = load_split("train")
     val_ds = load_split("val")
@@ -72,7 +77,7 @@ def main(epochs: int, batch_size: int, lr: float, mlflow_uri: str, max_train: in
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, num_labels=2)
 
     def tokenize(batch):
-        return tokenizer(batch["text"], truncation=True, max_length=512)
+        return tokenizer(batch["text"], truncation=True, max_length=256)
 
     train_tok = train_ds.map(tokenize, batched=True)
     val_tok = val_ds.map(tokenize, batched=True)
