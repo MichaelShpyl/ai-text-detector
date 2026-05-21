@@ -32,12 +32,19 @@ jobs:
           path: data/processed/
 
       - name: Install training deps
-        run: pip install --break-system-packages -r training/requirements.txt
+        run: |
+          # Rocky 9 has python3 but no pip/python on PATH, so use a venv that
+          # brings its own modern pip and gives both python and pip.
+          python3 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -r training/requirements.txt
 
       - name: Train and register
         env:
           MLFLOW_TRACKING_URI: http://localhost:5555
         run: |
+          . .venv/bin/activate
           python training/train.py \
             --epochs ${{ github.event.inputs.epochs || 2 }} \
             --batch-size ${{ github.event.inputs.batch_size || 16 }}

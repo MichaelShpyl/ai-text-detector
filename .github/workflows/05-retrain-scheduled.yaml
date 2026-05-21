@@ -41,14 +41,18 @@ jobs:
 
       - name: Re-run ingestion
         run: |
-          pip install --break-system-packages datasets==2.21.0
+          # Rocky 9 has python3 but no pip/python on PATH, so use a venv.
+          python3 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip datasets==2.21.0
           python training/ingest.py --subset all
 
       - name: Retrain
         env:
           MLFLOW_TRACKING_URI: http://localhost:5555
         run: |
-          pip install --break-system-packages -r training/requirements.txt
+          . .venv/bin/activate
+          python -m pip install -r training/requirements.txt
           python training/train.py --epochs 2
 
       - name: Run regression test against the new model
@@ -59,8 +63,9 @@ jobs:
           # Bring up a temporary serving container pointing at the new version
           docker compose up -d detector
           sleep 30
-          pip install --break-system-packages pytest requests
-          pytest tests/test_model_regression.py -v -m regression
+          . .venv/bin/activate
+          python -m pip install pytest requests
+          python -m pytest tests/test_model_regression.py -v -m regression
 
       - name: Promote or archive (two-gate check)
         # Gate 1: regression floor (already enforced by the step above - if
@@ -71,6 +76,7 @@ jobs:
           MLFLOW_TRACKING_URI: http://localhost:5555
           ACCURACY_FLOOR: "0.85"
         run: |
+          . .venv/bin/activate
           python - <<'EOF'
           import os
           import mlflow
