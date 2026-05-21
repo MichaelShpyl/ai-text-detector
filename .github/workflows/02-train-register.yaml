@@ -46,9 +46,9 @@ jobs:
       - name: Train and register
         env:
           MLFLOW_TRACKING_URI: http://localhost:5555
-          OMP_NUM_THREADS: "2"
-          MKL_NUM_THREADS: "2"
-          TORCH_NUM_THREADS: "2"
+          OMP_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+          TORCH_NUM_THREADS: "1"
           TOKENIZERS_PARALLELISM: "false"
         run: |
           . .venv/bin/activate

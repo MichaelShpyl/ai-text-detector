@@ -57,7 +57,7 @@ def main(epochs: int, batch_size: int, lr: float, mlflow_uri: str, max_train: in
 
     # Cap CPU threads so training doesn't starve the self-hosted runner's
     # heartbeat (that shows up as "runner lost communication" in Actions).
-    torch.set_num_threads(int(os.environ.get("TORCH_NUM_THREADS", "2")))
+    torch.set_num_threads(int(os.environ.get("TORCH_NUM_THREADS", "1")))
 
     print("Loading data splits...")
     train_ds = load_split("train")
