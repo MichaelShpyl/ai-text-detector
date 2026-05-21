@@ -39,6 +39,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Ensure MLflow is up
+        run: |
+          docker compose up -d mlflow
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5555/ >/dev/null && echo "MLflow is up" && exit 0
+            sleep 2
+          done
+          echo "MLflow did not come up in time" && exit 1
+
       - name: Re-run ingestion
         run: |
           # Rocky 9 has python3 but no pip/python on PATH, so use a venv.
