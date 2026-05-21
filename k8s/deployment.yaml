@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-text-detector
+  labels:
+    app: ai-text-detector
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-text-detector
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: ai-text-detector
+    spec:
+      containers:
+        - name: ai-text-detector
+          # Tag is updated by the 04-build-push workflow on every merge to main.
+          # ArgoCD detects the manifest change and rolls the cluster.
+          image: docker.io/michaelshpyl/ai-text-detector:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+              name: http
+          env:
+            - name: MLFLOW_TRACKING_URI
+              value: "http://mlflow.default.svc.cluster.local:5000"
+            - name: MODEL_NAME
+              value: "ai-text-detector"
+            - name: MODEL_STAGE
+              value: "Production"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 60
+            periodSeconds: 30

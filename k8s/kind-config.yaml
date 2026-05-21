@@ -1,0 +1,20 @@
+# Three-node Kind cluster: 1 control-plane + 2 workers.
+# Mirrors the topology from Edwina's Week 5 Tutorial 2.
+#
+# Usage:
+#   kind create cluster --name ai-detector --config kind-config.yaml
+#   kubectl get nodes -A
+#
+# extraPortMappings exposes the NodePort service (30080) on the host so
+# the Flask app can be reached at http://<vm-public-ip>:30080 during the demo.
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 30080
+        protocol: TCP
+  - role: worker
+  - role: worker

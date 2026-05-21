@@ -1,0 +1,27 @@
+# ArgoCD Application that watches the k8s/ directory in this repo.
+# Automated sync with prune + selfHeal means any commit to main that
+# changes a manifest will roll the cluster automatically.
+#
+# Apply with:
+#   kubectl apply -n argocd -f argoCD/application.yaml
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-text-detector
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/MichaelShpyl/ai-text-detector.git
+    targetRevision: main
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
