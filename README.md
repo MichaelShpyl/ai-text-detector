@@ -4,7 +4,7 @@ This is an end to end MLOps pipeline for a classifier that decides whether a pas
 
 I built it for the MLOps module final pipeline assessment. The pipeline is the implementation of a design I had already sketched earlier in the module on a Padlet, where we were asked to lay out the stages of an ML system. My Padlet had six stages: business problem understanding, data acquisition and management, ML training and testing, model deployment, continuous integration, and continuous monitoring. This repo implements all six and then adds three more: continuous delivery with ArgoCD, continuous training, and explainability.
 
-The wider reason it exists is my MSc dissertation, which is on AI-assisted academic integrity checking. The dissertation idea is a two stage process. First detect whether a submission looks AI-generated, then generate Bloom's-taxonomy style follow-up questions so a lecturer can check understanding in a short oral. This repo is stage one of that, built as a proper service rather than a notebook.
+The wider reason it exists is my MSc dissertation, which is about using AI to help check academic integrity. The dissertation idea is a two stage process. First detect whether a submission looks AI-generated, then generate Bloom's-taxonomy style follow-up questions so a lecturer can check understanding in a short oral. This repo is stage one of that, built as a proper service rather than a notebook.
 
 One more bit of context. When I posted the six-stage design on the Padlet, Shane McDevitt commented that I had left explainability out, and that it really matters when a model might end up affecting someone's grade. He was right, so explainability is now in here as stage nine (the `/explain` endpoint and the attention visualisation behind it).
 
@@ -69,7 +69,7 @@ You need at least one registered model in MLflow before the app container will c
 
 ## Deploying it for real
 
-The actual deployment runs on a GCP VM with a Kind cluster and ArgoCD. The full walk-through is in `WHAT_YOU_NEED_TO_DO.md`, start there, and `docs/gcp-setup-checklist.md` has the exact commands pulled from the module tutorials. Short version: MLflow runs under docker-compose, training runs on a self-hosted GitHub runner on the VM, images go to Docker Hub tagged by commit SHA, and ArgoCD rolls the cluster when a manifest changes.
+I run the actual deployment on a GCP VM with a Kind cluster and ArgoCD. The exact commands, pulled from the module tutorials, are in `docs/gcp-setup-checklist.md`. Short version: MLflow runs under docker-compose, training runs on a self-hosted GitHub runner on the VM, images go to Docker Hub tagged by commit SHA, and ArgoCD rolls the cluster when a manifest changes.
 
 ## Branching
 
