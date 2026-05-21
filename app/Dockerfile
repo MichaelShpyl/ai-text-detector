@@ -12,7 +12,7 @@ COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code. NOTE: the trained model is NOT baked into the
-# image — it is pulled from the MLflow Model Registry at container start.
+# image, it is pulled from the MLflow Model Registry at container start.
 # This is the key separation-of-concerns improvement called out in the
 # Padlet (training-serving skew, John et al. 2021).
 COPY app/ /app/app/
