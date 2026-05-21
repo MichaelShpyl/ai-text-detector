@@ -1,0 +1,41 @@
+name: 01 - Data Ingestion
+
+# Padlet Stage 2: Data Acquisition & Management.
+# Pulls the latest HC3 splits and uploads them as a workflow artefact
+# that subsequent training runs can consume.
+
+on:
+  workflow_dispatch:
+    inputs:
+      subset:
+        description: "HC3 subset (all, finance, medicine, open_qa, reddit_eli5, wiki_csai)"
+        default: "all"
+        required: true
+  schedule:
+    - cron: "0 1 * * 1"   # Mondays at 01:00 UTC
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install ingest deps
+        run: pip install datasets==2.21.0
+
+      - name: Run ingestion
+        run: python training/ingest.py --subset ${{ github.event.inputs.subset || 'all' }}
+
+      - name: Upload processed data
+        uses: actions/upload-artifact@v4
+        with:
+          name: hc3-processed
+          path: data/processed/
+          retention-days: 30

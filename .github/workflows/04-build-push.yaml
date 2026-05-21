@@ -1,0 +1,55 @@
+name: 04 - Build, Push & Deploy
+
+# Padlet Stage 4 (Deployment) + Stage 7 (Continuous Delivery via ArgoCD).
+# Triggered on merges to main. Builds the Flask image, tags it with the
+# commit SHA, pushes to Docker Hub, and updates k8s/deployment.yaml to
+# point at the new tag. ArgoCD picks up the manifest change and rolls
+# the cluster automatically (no manual kubectl apply needed).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "training/preprocess.py"
+      - "explainability/**"
+      - ".github/workflows/04-build-push.yaml"
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build image
+        run: |
+          IMAGE=${{ secrets.DOCKER_HUB_USERNAME }}/ai-text-detector
+          docker build -f app/Dockerfile -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+
+      - name: Push image
+        run: |
+          IMAGE=${{ secrets.DOCKER_HUB_USERNAME }}/ai-text-detector
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+
+      - name: Update k8s manifest with new image tag
+        run: |
+          IMAGE=${{ secrets.DOCKER_HUB_USERNAME }}/ai-text-detector
+          sed -i "s|image: docker.io/.*ai-text-detector:.*|image: docker.io/$IMAGE:${{ github.sha }}|" k8s/deployment.yaml
+
+      - name: Commit manifest update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add k8s/deployment.yaml
+          git diff --cached --quiet || git commit -m "ci: deploy ${{ github.sha }} [skip ci]"
+          git push

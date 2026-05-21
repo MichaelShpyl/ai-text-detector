@@ -1,0 +1,43 @@
+name: 02 - Train & Register
+
+# Padlet Stage 3: ML Training & Testing.
+# Runs on a self-hosted runner (GCP VM) because DistilBERT fine-tuning
+# is too heavy for ubuntu-latest. Pulls data from the latest run of
+# 01-data-ingestion.yaml, fine-tunes the model, logs metrics + params
+# to MLflow, and registers the trained model under name 'ai-text-detector'.
+
+on:
+  workflow_dispatch:
+    inputs:
+      epochs:
+        description: "Training epochs"
+        default: "2"
+      batch_size:
+        description: "Batch size"
+        default: "16"
+
+jobs:
+  train:
+    runs-on: self-hosted
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download latest processed data
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: 01-data-ingestion.yaml
+          name: hc3-processed
+          path: data/processed/
+
+      - name: Install training deps
+        run: pip install --break-system-packages -r training/requirements.txt
+
+      - name: Train and register
+        env:
+          MLFLOW_TRACKING_URI: http://localhost:5555
+        run: |
+          python training/train.py \
+            --epochs ${{ github.event.inputs.epochs || 2 }} \
+            --batch-size ${{ github.event.inputs.batch_size || 16 }}
