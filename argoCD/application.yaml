@@ -16,6 +16,9 @@ spec:
     repoURL: https://github.com/MichaelShpyl/ai-text-detector.git
     targetRevision: main
     path: k8s
+    directory:
+      # kind-config.yaml is a Kind CLI config, not a k8s manifest, so don't apply it
+      exclude: kind-config.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: default
