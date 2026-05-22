@@ -21,7 +21,9 @@ services:
       mlflow server
         --host 0.0.0.0
         --backend-store-uri sqlite:///mlflow/mlflow.db
-        --default-artifact-root /mlflow/artifacts
+        --serve-artifacts
+        --artifacts-destination /mlflow/artifacts
+        --default-artifact-root mlflow-artifacts:/
     volumes:
       - mlflow-data:/mlflow
     container_name: mlflow-tracking-server
