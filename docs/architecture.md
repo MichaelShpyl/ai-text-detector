@@ -10,28 +10,40 @@ I run everything on one GCP VM. I went with an n1-standard-4, which is about the
 2. A self-hosted GitHub Actions runner. I run the training workflow here rather than on `ubuntu-latest`, because fine-tuning a transformer on the hosted runners is slow and tends to time out on me. I set this up following the week 8 self-hosted runner tutorial.
 3. A 3-node Kind cluster (one control-plane, two workers) running ArgoCD and my Flask app. I took the cluster layout straight from the week 5 tutorial 2.
 
-```
-                          GitHub repo
-                              │
-        ┌─────────────────────┼──────────────────────┐
-        │ Actions             │                      │ Actions
-        ▼                     ▼                      ▼
-   03 CI tests          02 train (self-hosted)   04 build + push
-                              │                      │
-                              ▼                      ▼
-   ┌───────────────────────────────────────────────────────────┐
-   │  GCP VM                                                     │
-   │                                                            │
-   │   MLflow (compose, :5555)        Kind cluster (3 nodes)     │
-   │      registry  ◀───── model ─────  Flask pods  ── :30080    │
-   │                       pulled         ▲                      │
-   │                      at start        │ sync                 │
-   │                                    ArgoCD ──┐               │
-   └─────────────────────────────────────────────┼─────────────┘
-                                                  │ watches k8s/
-                Docker Hub  ◀── push ── 04        │
-                    │                             │
-                    └──── pull image ─────────────┘
+```mermaid
+flowchart TB
+    GH["GitHub repo<br/>(source of truth)"]
+
+    GH -->|Actions| CI["03 CI tests<br/>lint and unit tests"]
+    GH -->|Actions| TR["02 train and register<br/>self-hosted runner"]
+    GH -->|Actions| BP["04 build and push"]
+
+    BP -->|"image :sha and :latest"| DH[("Docker Hub")]
+    BP -->|"updates image tag in k8s/"| GH
+
+    subgraph VM["GCP VM"]
+        direction TB
+        MLF["MLflow registry<br/>docker-compose :5555"]
+        subgraph KIND["Kind cluster, 3 nodes"]
+            direction TB
+            ARGO["ArgoCD"]
+            POD["Flask pods<br/>NodePort :30080"]
+            ARGO -->|"sync and self-heal"| POD
+        end
+    end
+
+    TR -->|"log metrics, register model"| MLF
+    GH -.->|"ArgoCD watches k8s/"| ARGO
+    DH -->|"pull image"| POD
+    MLF -->|"model pulled at pod startup"| POD
+    USER(["Laptop / browser"]) -->|"HTTP :30080"| POD
+
+    classDef wf fill:#e7f0ff,stroke:#2d6cdf,color:#13315c;
+    classDef store fill:#fff3e0,stroke:#e08a00,color:#5c3a00;
+    classDef run fill:#e9f7ef,stroke:#1b8a4b,color:#0f4d2a;
+    class CI,TR,BP wf;
+    class DH,MLF store;
+    class POD,ARGO run;
 ```
 
 Docker Hub sits outside the VM. My build-push workflow pushes images there tagged by commit SHA, and the cluster pulls from it.
