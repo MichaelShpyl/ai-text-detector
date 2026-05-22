@@ -64,5 +64,5 @@ jobs:
           python training/train.py \
             --epochs ${{ github.event.inputs.epochs || 2 }} \
             --batch-size ${{ github.event.inputs.batch_size || 16 }} \
-            --max-train ${{ github.event.inputs.max_train || 4000 }} \
-            --max-eval 1000
+            --max-train ${{ github.event.inputs.max_train || 2000 }} \
+            --max-eval 400
