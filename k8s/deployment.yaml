@@ -23,7 +23,7 @@ spec:
         - name: ai-text-detector
           # Tag is updated by the 04-build-push workflow on every merge to main.
           # ArgoCD detects the manifest change and rolls the cluster.
-          image: docker.io/michaelshpyl/ai-text-detector:97c376611bf31d2d071a754f2b6f8e9f0bfb43b3
+          image: docker.io/michaelshpyl/ai-text-detector:6c009f6af0d47b7ae2181b45c5f79a64dce8b4d7
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
